@@ -6,7 +6,7 @@ import pandas as pd
 
 from datetime  import datetime
 from tkinter   import filedialog
-from asyncio   import gather, run
+from asyncio   import run
 from aiometer  import run_all
 from functools import partial
 
@@ -49,7 +49,6 @@ async def consultar_api(ceps_df):
     unique_ceps = list( ceps_df.drop_duplicates().dropna() )    # Brasil API permite CEP com pontos e traços!
     
     # Consumindo API
-    #tasks   = gather( *[buscar_cep(cep) for cep in unique_ceps] )
     tasks    = run_all(
         [partial(buscar_cep, cep) for cep in unique_ceps],
         max_at_once    = 5,
@@ -134,7 +133,7 @@ async def main():
     
     if not arquivo_json:
         results = await consultar_api(ceps_df)
-    else:   # TODO: Permitir que o usuário já forneça um arquivo JSON (de consultas anteriores) para não ter que consumir a API novamente.
+    else:   # Permite que o usuário forneça um arquivo JSON (de consultas anteriores) para não ter que consumir a API novamente.
         with open(arquivo_json, 'r', encoding='utf-8') as f:
             results = json.load(f) 
 
