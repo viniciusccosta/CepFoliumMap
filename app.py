@@ -87,7 +87,7 @@ def gerar_mapa(localizacoes, ceps_df):
     folium.TileLayer('OpenStreetMap'  , attr="Open Street Map" , name="Satélite").add_to(mapa)
     
     # Marcadores:
-    mark_cluster   = MarkerCluster(name="Alunos").add_to(mapa)
+    mark_cluster   = MarkerCluster(name="CEPs").add_to(mapa)
     cnt_not_marked = 0
     
     for l in localizacoes:
@@ -99,7 +99,7 @@ def gerar_mapa(localizacoes, ceps_df):
                     Marker(
                         popup    = f'{l.cep}',
                         location = (l.latitude, l.longitude), 
-                        icon     = Icon(color='blue', icon="info-sign"),
+                        icon     = Icon(color='blue', prefix='fa', icon="circle-info"),
                     ).add_to(mark_cluster)
                 else:
                     cnt_not_marked += 1
@@ -114,7 +114,7 @@ def gerar_mapa(localizacoes, ceps_df):
     folium.LayerControl().add_to(mapa)
     
     return mapa
-    
+
 def salvar_mapa(mapa):
     filename = f'{datetime.now():%Y-%m-%d-%H-%M-%S}.html'
     mapa.save(filename)
@@ -142,6 +142,8 @@ async def main():
     
     # Efetivamente gerando o mapa
     mapa = gerar_mapa(localizacoes, ceps_df)
+        
+    # Salvando mapa
     salvar_mapa(mapa)
 
 # =======================================
