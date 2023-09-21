@@ -75,7 +75,7 @@ async def consultar_api(ceps_df):
     
     # Salvando o resultado em arquivo .json caso o usuário não queria requisitar tudo novamente
     with open(f'{datetime.now():%Y-%m-%d-%H-%M-%S}.json', 'w', encoding='utf8') as rf:
-        json.dump(results, rf)
+        json.dump(results, rf, ensure_ascii=False)
     
     return results
 
