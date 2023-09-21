@@ -7,7 +7,27 @@ O CepFoliumMap é uma ferramenta versátil que permite consultar múltiplos CEPs
 
 ## Módulo app.py
 
-O módulo principal deste projeto é responsável por ler um arquivo no formato .XLS que contenha uma coluna denominada 'cep'. A partir desses CEPs, o aplicativo gera um mapa interativo utilizando a biblioteca Folium. Se você não fornecer um arquivo .JSON que contenha as coordenadas geográficas correspondentes a cada CEP, o sistema realizará consultas à API da BrasilAPI para obter essas informações automaticamente.
+O módulo principal deste projeto desempenha um papel central, permitindo que você crie mapas interativos a partir de dados de CEPs. Ele é projetado para ler um arquivo no formato .XLS que deve conter uma coluna com o nome 'cep'. Com base nesses CEPs, o aplicativo gera um mapa interativo utilizando a biblioteca Folium.
+
+### Como Utilizar
+
+Siga estas etapas simples para aproveitar ao máximo o Módulo app.py:
+
+1. Execute o módulo app.py utilizando o seguinte comando:
+
+    ```bash
+    python app.py
+    ```
+
+2. Escolha o arquivo .xls que contém os CEPs que você deseja visualizar no mapa.
+3. Se você já possui um arquivo .json com as coordenadas geográficas correspondentes a cada CEP de execuções anteriores, pode escolher fornecê-lo no processo. Isso pode economizar tempo, evitando consultas adicionais à API da BrasilAPI.
+4. Aguarde a geração do mapa.
+
+Após a conclusão do processo, você encontrará os seguintes arquivos na raiz do diretório:
+
+1. **.log**: Este arquivo contém todo o registro da execução, permitindo que você acompanhe o progresso e eventuais erros.
+2. **.json**: Caso você tenha optado por realizar consultas à API da BrasilAPI, este arquivo conterá os dados em formato JSON obtidos durante a execução.
+3. **.html**: Este é o arquivo principal, que contém o mapa interativo gerado a partir dos CEPs fornecidos. Você pode abri-lo em seu navegador para visualizar o mapa.
 
 ## Módulo scrappy.py
 
