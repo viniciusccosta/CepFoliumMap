@@ -13,7 +13,7 @@ O módulo principal deste projeto é responsável por ler um arquivo no formato 
 
 O Módulo Scrappy é uma ferramenta especializada que foi desenvolvida para realizar raspagem de informações de sites que oferecem a consulta de CEPs e exibem um mapa do Google Maps incorporado em um iframe. Esse módulo se torna útil quando as consultas à BrasilAPI não retornam as coordenadas geográficas desejadas. O Módulo Scrappy lê um arquivo de texto no qual cada linha representa um CEP (sem pontos ou traços) e extrai as informações necessárias diretamente do site, permitindo uma coleta mais precisa dos dados.
 
-**Nota Importante**: Para utilizar o Módulo Scrappy, é necessário configurar uma variável de ambiente chamada "CEPFOLIUMMAP_SCRAPPY_URL" com a URL do site que permite a consulta de CEPs e exibe um mapa do Google Maps incorporado em um iframe. Esta URL será utilizada pelo Módulo Scrappy para acessar o site e realizar a raspagem de informações.
+**Nota Importante**: Para utilizar o Módulo Scrappy, é necessário configurar uma variável de ambiente chamada `CEPFOLIUMMAP_SCRAPPY_URL` com a URL do site que permite a consulta de CEPs e exibe um mapa do Google Maps incorporado em um iframe. Esta URL será utilizada pelo Módulo Scrappy para acessar o site e realizar a raspagem de informações.
 
 ## Módulo data_merge.py
 
