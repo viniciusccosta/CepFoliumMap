@@ -10,16 +10,16 @@ from asyncio   import run
 from aiometer  import run_all
 from functools import partial
 
-from folium import Marker, Icon
+from folium         import Marker, Icon
 from folium.plugins import MarkerCluster
 
 from httpx import AsyncClient
 
-# =======================================
+# ===========================================================
 COORDENADAS_BRASIL = (-15.77972, -47.92972)
 BRASIL_API_URL     = 'https://brasilapi.com.br/api/cep/v2/'
 
-# =======================================
+# ===========================================================
 class Localizacao:
     def __init__(self, brasil_api):
         self.cep         = brasil_api.get('cep')
@@ -34,8 +34,25 @@ class Localizacao:
         self.coordenadas      = self.localizacao.get('coordinates', {})
         self.longitude        = self.coordenadas.get('longitude')
         self.latitude         = self.coordenadas.get('latitude')
+        
+    def to_json(self):
+        return {
+            "cep"           : self.cep,
+            "state"         : self.estado,
+            "city"          : self.cidade,
+            "neighborhood"  : self.bairro,
+            "street"        : self.endereco,
+            "service"       : self.servico,
+            "location"      : {
+                "type"       : self.tipo_localizacao,
+                "coordinates": {
+                    "longitude": self.longitude,
+                    "latitude" : self.latitude,
+                }
+            }
+        }
 
-# =======================================
+# ===========================================================
 def get_dataframe(arquivo):
     # Lendo planilha:
     enderecos_df = pd.read_excel(arquivo) # Qualquer planilha .xls que contenha uma coluna "cep"
@@ -146,7 +163,7 @@ async def main():
     # Salvando mapa
     salvar_mapa(mapa)
 
-# =======================================
+# ===========================================================
 if __name__ == "__main__":
     file_handler   = logging.FileHandler(
         filename = f'{datetime.now():%Y-%m-%d-%H-%M-%S}.log',
