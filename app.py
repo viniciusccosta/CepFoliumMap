@@ -173,7 +173,7 @@ def gerar_mapa(dataframe:pd.DataFrame):
     logging.info(f'Um total de {cnt_not_marked} marcadores não foram adicionados ao mapa')
     
     # Controlador:
-    folium.LayerControl().add_to(mapa)
+    folium.LayerControl(collapsed=False).add_to(mapa)
     
     return mapa
 
