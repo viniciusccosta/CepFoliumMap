@@ -11,7 +11,7 @@ from asyncio   import run
 from aiometer  import run_all
 from functools import partial
 
-from folium         import Marker, Icon
+from folium         import Marker, Icon, FeatureGroup
 from folium.plugins import MarkerCluster
 
 from httpx import AsyncClient
@@ -68,8 +68,10 @@ def get_dataframe(arquivo):
         planilha_df['icon'] = None
     if 'color' not in planilha_df.columns:
         planilha_df['color'] = None
+    if 'texto' not in planilha_df.columns:
+        planilha_df['texto'] = None
     
-    dataframe        = planilha_df[['cep', 'grupo', 'latitude', 'longitude', 'icon', 'color']]
+    dataframe        = planilha_df[['cep', 'grupo', 'latitude', 'longitude', 'icon', 'color', 'texto']]
     dataframe        = dataframe.dropna(subset=['cep'])
     dataframe['cep'] = dataframe['cep'].apply(lambda x: str(x).replace('.', '').replace('-',''))
     
@@ -140,19 +142,25 @@ def gerar_mapa(dataframe:pd.DataFrame):
     
     for grupo, group_data in dataframe.groupby('grupo'):
         mark_cluster = MarkerCluster(name=grupo).add_to(mapa)
+        # mark_cluster = FeatureGroup(name=grupo).add_to(mapa)
         for _, row in group_data.iterrows():
             try:
                 cep = row["cep"]
                 lat = row['latitude']
                 lng = row['longitude']
+                
+                texto = str(row['texto']) if pd.notna(row['texto']) else cep
+                icon  = str(row['icon'])  if pd.notna(row['icon'])  else "circle-info"
+                color = str(row['color']) if pd.notna(row['color']) else "blue"
+                
                 if pd.notna(lat) and pd.notna(lng):                    
                     Marker(
                         location = (lat, lng),
-                        popup    = cep,             # TODO: Coluna "texto" ou algo similar
+                        popup    = texto,
                         icon     = Icon (
                             prefix = 'fa',
-                            icon   = str(row['icon'])  if pd.notna(row['icon'])  else "circle-info",
-                            color  = str(row['color']) if pd.notna(row['color']) else "blue",
+                            icon   = icon,
+                            color  = color,
                         ),
                     ).add_to(mark_cluster)
                 else:
