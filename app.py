@@ -3,6 +3,7 @@ import folium
 import logging
 
 import pandas as pd
+import numpy  as np
 
 from datetime  import datetime
 from tkinter   import filedialog
@@ -55,15 +56,28 @@ class Localizacao:
 # ===========================================================
 def get_dataframe(arquivo):
     # Lendo planilha:
-    enderecos_df = pd.read_excel(arquivo) # Qualquer planilha .xls que contenha uma coluna "cep"
-    ceps_df      = enderecos_df['cep'].dropna()
-    ceps_df      = ceps_df.apply(lambda x: str(x).replace('.', '').replace('-',''))
+    planilha_df = pd.read_excel(arquivo) # Qualquer planilha .xls que contenha uma coluna "cep"
     
-    return ceps_df
+    if 'grupo' not in planilha_df.columns:
+        planilha_df['grupo'] = '-'
+    if 'latitude' not in planilha_df.columns:
+        planilha_df['latitude'] = None
+    if 'longitude' not in planilha_df.columns:
+        planilha_df['longitude'] = None
+    if 'icon' not in planilha_df.columns:
+        planilha_df['icon'] = None
+    if 'color' not in planilha_df.columns:
+        planilha_df['color'] = None
     
-async def consultar_api(ceps_df):
+    dataframe        = planilha_df[['cep', 'grupo', 'latitude', 'longitude', 'icon', 'color']]
+    dataframe        = dataframe.dropna(subset=['cep'])
+    dataframe['cep'] = dataframe['cep'].apply(lambda x: str(x).replace('.', '').replace('-',''))
+    
+    return dataframe
+    
+async def consultar_api(dataframe):
     # Agrupando CEPs iguais
-    unique_ceps = list( ceps_df.drop_duplicates().dropna() )    # Brasil API permite CEP com pontos e traços!
+    unique_ceps = list( dataframe['cep'].drop_duplicates().dropna() )    # Brasil API permite CEP com pontos e traços!
     
     # Consumindo API
     tasks    = run_all(
@@ -73,15 +87,15 @@ async def consultar_api(ceps_df):
     )
     results = await tasks
     
-    # Salvando o resultado em arquivo .json caso o usuário não queria requisitar tudo novamente
-    with open(f'{datetime.now():%Y-%m-%d-%H-%M-%S}.json', 'w', encoding='utf8') as rf:
-        json.dump(results, rf, ensure_ascii=False)
+    # Salvando o resultado em arquivo .json caso o usuário queira usar posteriormente
+    with open(f'{datetime.now():%Y-%m-%d-%H-%M-%S}.json', 'w', encoding='utf8') as file:
+        json.dump({r['cep']: r for r in results}, file, ensure_ascii=False)
     
     return results
 
 async def buscar_cep(cep):
     try:
-        async with AsyncClient(base_url=BRASIL_API_URL, timeout=10) as client:                          # TODO: Timeout de ____ segundos
+        async with AsyncClient(base_url=BRASIL_API_URL, timeout=10) as client: # TODO: Timeout de ____ segundos
             logging.debug(f'{datetime.now()} chamando {cep}')
             response = await client.get(str(cep))
             logging.debug(f'{datetime.now()} finalizado {cep} com status code {response.status_code}')
@@ -91,12 +105,30 @@ async def buscar_cep(cep):
     
     except Exception as e:
         logging.error(f'Error ao tentar consumir API para o CEP {cep}', e)
+        
+    return {}
 
-def gerar_localizacoes(results):
-    localizacoes = [Localizacao(r) for r in results if r]       # Só irá instanciar daqueles que tiveram resposta da API
-    return localizacoes
+def atualizar_coordenadas(dataframe:pd.DataFrame, api_results:dict):
+    novo_dataframe = dataframe.copy()
+    
+    for index, row in novo_dataframe.iterrows():
+        if pd.notna(row['latitude']) and pd.notna(row['longitude']):    # Não vamos atualizar as linhas que já possuem coordenadas
+            continue
+        
+        try:
+            cep         = row['cep']
+            coordenadas = api_results.get(cep, {}).get('location', {}).get('coordinates', {})
+            
+            novo_dataframe.at[index, 'latitude']  = coordenadas.get('latitude', np.nan)     # row['latitude']  = coordenadas.get('latitude' , np.nan)
+            novo_dataframe.at[index, 'longitude'] = coordenadas.get('longitude', np.nan)    # row['longitude'] = coordenadas.get('longitude', np.nan)
+        except (ValueError, IndexError) as e:
+            logging.warning(f'Coordenadas não encontradas para o CEP {cep}', e)
+        except Exception as e:
+            logging.error(f'Erro ao tentar atualizar coordenadas do CEP {cep}', e)
+        
+    return novo_dataframe
 
-def gerar_mapa(localizacoes, ceps_df):
+def gerar_mapa(dataframe:pd.DataFrame):
     mapa = folium.Map(location=COORDENADAS_BRASIL, zoom_start=4, tiles=None, )
     
     # Tipos de Mapa:
@@ -104,28 +136,33 @@ def gerar_mapa(localizacoes, ceps_df):
     folium.TileLayer('OpenStreetMap'  , attr="Open Street Map" , name="Satélite").add_to(mapa)
     
     # Marcadores:
-    mark_cluster   = MarkerCluster(name="CEPs").add_to(mapa)
     cnt_not_marked = 0
     
-    for l in localizacoes:
-        qtd = (ceps_df == l.cep).sum()  # Repetindo os marcadores conforme a quantidade de registros desse mesmo CEP
-        
-        for _ in range(qtd):
+    for grupo, group_data in dataframe.groupby('grupo'):
+        mark_cluster = MarkerCluster(name=grupo).add_to(mapa)
+        for _, row in group_data.iterrows():
             try:
-                if l.latitude and l.longitude:
+                cep = row["cep"]
+                lat = row['latitude']
+                lng = row['longitude']
+                if pd.notna(lat) and pd.notna(lng):                    
                     Marker(
-                        popup    = f'{l.cep}',
-                        location = (l.latitude, l.longitude), 
-                        icon     = Icon(color='blue', prefix='fa', icon="circle-info"),
+                        location = (lat, lng),
+                        popup    = cep,             # TODO: Coluna "texto" ou algo similar
+                        icon     = Icon (
+                            prefix = 'fa',
+                            icon   = str(row['icon'])  if pd.notna(row['icon'])  else "circle-info",
+                            color  = str(row['color']) if pd.notna(row['color']) else "blue",
+                        ),
                     ).add_to(mark_cluster)
                 else:
                     cnt_not_marked += 1
-                    logging.warning(f'CEP {l.cep} não possui localização: ({l.latitude}, {l.longitude})')
+                    logging.warning(f'CEP {cep} não possui localização: ({lat}, {lng})')
             except Exception as e:
-                logging.error('Erro ao tentar adicionar marcador ao mapa: {l.cep}', e)
+                logging.error(f'Erro ao tentar adicionar marcador ao mapa: {cep}', e)
     
     # Quantidade de CEPs que não foram adicionados ao mapa:
-    logging.info(f'Um total de {cnt_not_marked} marcadores não foram adicionados ao mapa')  # É a quantidade de marcadores e não a quantidade de CEPs (um CEP pode ter mais de 1 marcador)
+    logging.info(f'Um total de {cnt_not_marked} marcadores não foram adicionados ao mapa')
     
     # Controlador:
     folium.LayerControl().add_to(mapa)
@@ -143,22 +180,23 @@ async def main():
         exit()
     
     # Gerando dataframe a partir de um arquivo Excel:
-    ceps_df = get_dataframe(arquivo_excel)
+    dataframe = get_dataframe(arquivo_excel)
     
     # Realizando a consulta na API:
     arquivo_json = filedialog.askopenfilename(title="Arquivo JSON", filetypes=[('.json', '*.json')])
-    
+        
     if not arquivo_json:
-        results = await consultar_api(ceps_df)
+        api_results = await consultar_api(dataframe)
     else:   # Permite que o usuário forneça um arquivo JSON (de consultas anteriores) para não ter que consumir a API novamente.
+        # TODO: Permitir que o usuário consulte a API para os CEPs que não estão presentes no JSON
         with open(arquivo_json, 'r', encoding='utf-8') as f:
-            results = json.load(f) 
+            api_results = json.load(f)
 
-    # Instanciando objetos "Localizacao"
-    localizacoes = gerar_localizacoes(results)
+    # Inserindo colunas de latitude e longitude no dataframe
+    novo_dataframe = atualizar_coordenadas(dataframe, api_results)
     
     # Efetivamente gerando o mapa
-    mapa = gerar_mapa(localizacoes, ceps_df)
+    mapa = gerar_mapa(novo_dataframe)
         
     # Salvando mapa
     salvar_mapa(mapa)

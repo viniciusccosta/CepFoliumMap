@@ -3,7 +3,12 @@ import json
 from tkinter  import filedialog, messagebox
 from datetime import datetime
 
-from app import gerar_localizacoes
+from app import Localizacao
+
+# ===========================================================
+def gerar_localizacoes(results):
+    localizacoes = [Localizacao(r) for cep, r in results.items() if cep]
+    return localizacoes
 
 # ===========================================================
 def main():
@@ -15,8 +20,8 @@ def main():
         messagebox.showerror('Erro', 'Necessário informar os 2 arquivos')
         return    
     
-    app_results     = json.load(open(app_file)    , )
-    scrappy_results = json.load(open(scrappy_file), )
+    app_results     = json.load(open(app_file, 'r', encoding='utf8')    , )
+    scrappy_results = json.load(open(scrappy_file, 'r', encoding='utf8'), )
     
     # Gerando objetos "Localização"
     localizacoes = gerar_localizacoes(app_results)
@@ -29,8 +34,8 @@ def main():
                 l.longitude = scrappy_results[l.cep].get('longitude')   # Caso "scrappy_result[cep]" não possua longitude, simplesmente não fará diferença
                 
     # Salva resultado:
-    result = [l.to_json() for l in localizacoes]
-    with open(f'merge-{datetime.now():%Y-%m-%d-%H-%M-%S}.json', 'w', encoding='utf-8') as f:
+    result = {l.cep: l.to_json() for l in localizacoes}
+    with open(f'merged-{datetime.now():%Y-%m-%d-%H-%M-%S}.json', 'w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False)
 
 # ===========================================================
