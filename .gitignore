@@ -160,6 +160,11 @@ cython_debug/
 #.idea/
 
 
+mapas/*
+scrapps/*
+merges/*
+logs/*
+brasilapi/*
 *.html
 *.xls
 *.json
