@@ -10,8 +10,9 @@ from tkinter   import filedialog
 from asyncio   import run
 from aiometer  import run_all
 from functools import partial
+from pathlib import Path
 
-from folium         import Marker, Icon, FeatureGroup
+from folium         import Marker, Icon
 from folium.plugins import MarkerCluster
 
 from httpx import AsyncClient
@@ -90,7 +91,7 @@ async def consultar_api(dataframe):
     results = await tasks
     
     # Salvando o resultado em arquivo .json caso o usuário queira usar posteriormente
-    with open(f'{datetime.now():%Y-%m-%d-%H-%M-%S}.json', 'w', encoding='utf8') as file:
+    with open(f'brasilapi/{datetime.now():%Y-%m-%d-%H-%M-%S}.json', 'w', encoding='utf8') as file:
         json.dump({r['cep']: r for r in results}, file, ensure_ascii=False)
     
     return results
@@ -142,7 +143,6 @@ def gerar_mapa(dataframe:pd.DataFrame):
     
     for grupo, group_data in dataframe.groupby('grupo'):
         mark_cluster = MarkerCluster(name=grupo).add_to(mapa)
-        # mark_cluster = FeatureGroup(name=grupo).add_to(mapa)
         for _, row in group_data.iterrows():
             try:
                 cep = row["cep"]
@@ -157,6 +157,7 @@ def gerar_mapa(dataframe:pd.DataFrame):
                     Marker(
                         location = (lat, lng),
                         popup    = texto,
+                        # tooltip  = texto,
                         icon     = Icon (
                             prefix = 'fa',
                             icon   = icon,
@@ -178,7 +179,7 @@ def gerar_mapa(dataframe:pd.DataFrame):
     return mapa
 
 def salvar_mapa(mapa):
-    filename = f'{datetime.now():%Y-%m-%d-%H-%M-%S}.html'
+    filename = f'mapas/{datetime.now():%Y-%m-%d-%H-%M-%S}.html'
     mapa.save(filename)
     logging.info(f'Mapa {filename} salvo com sucesso')
 
@@ -211,8 +212,12 @@ async def main():
 
 # ===========================================================
 if __name__ == "__main__":
+    Path("mapas/").mkdir(parents=True, exist_ok=True)
+    Path("brasilapi/").mkdir(parents=True, exist_ok=True)
+    Path("logs/").mkdir(parents=True, exist_ok=True)
+    
     file_handler   = logging.FileHandler(
-        filename = f'{datetime.now():%Y-%m-%d-%H-%M-%S}.log',
+        filename = f'logs/{datetime.now():%Y-%m-%d-%H-%M-%S}.log',
         mode     = 'w',
         encoding = 'utf-8',   
     )

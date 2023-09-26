@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from functools    import partial
 from decouple     import config
 from tkinter      import messagebox, filedialog
+from pathlib      import Path
 
 # ========================================================
 URL = config('CEPFOLIUMMAP_SCRAPPY_URL', None)              # Qualquer site que faça consulta por CEP e que possua o mapa do Google embutido na página (dentro de um iframe).
@@ -87,18 +88,21 @@ async def main():
     results = await tasks
     
     # Guardando resultado:
-    with open(f'scrappy-{datetime.now():%Y-%m-%d-%H-%M-%S}.json', 'w', encoding='utf-8') as f:
+    with open(f'scrapps/scrappy-{datetime.now():%Y-%m-%d-%H-%M-%S}.json', 'w', encoding='utf-8') as f:
         result_dict = {key: value for key, value in zip(ceps, results)}
         json.dump(result_dict, f, ensure_ascii=False)
 
 # ========================================================
 if __name__ == "__main__":
+    Path("scrapps/").mkdir(parents=True, exist_ok=True)
+    Path("logs/").mkdir(parents=True, exist_ok=True)
+    
     if not URL:
         messagebox.showerror(title="Erro", message="Necessário configurar a variável de ambiente CEPFOLIUMMAP_SCRAPPY_URL")
         exit(0)
     
     file_handler   = logging.FileHandler(
-        filename = f'scrappy-{datetime.now():%Y-%m-%d-%H-%M-%S}.log',
+        filename = f'logs/scrappy-{datetime.now():%Y-%m-%d-%H-%M-%S}.log',
         mode     = 'w',
         encoding = 'utf-8',   
     )
