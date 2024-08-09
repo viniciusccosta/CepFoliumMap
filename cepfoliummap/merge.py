@@ -1,6 +1,8 @@
 import json
-from datetime import datetime
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class Localizacao:

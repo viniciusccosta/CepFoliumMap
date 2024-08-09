@@ -5,6 +5,8 @@ from pathlib import Path
 from decouple import config
 from rich.logging import RichHandler
 
+logger = logging.getLogger(__name__)
+
 
 def config_logging():
     # Handlers:
@@ -33,11 +35,11 @@ def config_logging():
     logging.getLogger("httpcore.connection").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.INFO)
 
-    logging.debug("Logging configurado")
+    logger.debug("Logging configurado")
 
 
 def create_directories():
-    logging.debug("Criando diretórios")
+    logger.debug("Criando diretórios")
 
     Path("mapas/").mkdir(parents=True, exist_ok=True)
     Path("brasilapi/").mkdir(parents=True, exist_ok=True)
@@ -45,7 +47,7 @@ def create_directories():
     Path("geodecode/").mkdir(parents=True, exist_ok=True)
     Path("merges/").mkdir(parents=True, exist_ok=True)
 
-    logging.debug("Diretórios criados")
+    logger.debug("Diretórios criados")
 
 
 def initial_config():

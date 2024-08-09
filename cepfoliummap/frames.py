@@ -17,13 +17,15 @@ from httpx import AsyncClient
 from ttkbootstrap.tooltip import ToolTip
 
 from cepfoliummap.constants import (
-    BRASILAPI_REQUEST_PER_SECOND,
     BRASILAPI_URL,
     COORDENADAS_BRASIL,
     MAX_AT_ONCE,
+    REQUESTS_SECOND,
 )
-from cepfoliummap.geocode import get_coordinates
+from cepfoliummap.geocode import get_coordinates, get_coordinates_from_cep
 from cepfoliummap.merge import merge_results
+
+logger = logging.getLogger(__name__)
 
 
 class CepFoliumMapFrame(tk.Frame):
@@ -79,6 +81,7 @@ class CepFoliumMapFrame(tk.Frame):
             command=lambda: asyncio.run(self.executar()),
         ).pack(pady=5, padx=5)
 
+    # --------------
     def buscar_xls(self):
         arquivo_excel = filedialog.askopenfilename(
             title="Arquivo Excel",
@@ -86,7 +89,7 @@ class CepFoliumMapFrame(tk.Frame):
         )
         if arquivo_excel:
             self.arquivo_excel.set(arquivo_excel)
-            logging.info(f"Arquivo Excel selecionado: {arquivo_excel}")
+            logger.info(f"Arquivo Excel selecionado: {arquivo_excel}")
 
         # Liberar botão de execução se arquivo arquivo_excel.get() não é None|Vazio
 
@@ -97,8 +100,9 @@ class CepFoliumMapFrame(tk.Frame):
         )
         if arquivo_json:
             self.arquivo_json.set(arquivo_json)
-            logging.info(f"Arquivo JSON selecionado: {arquivo_json}")
+            logger.info(f"Arquivo JSON selecionado: {arquivo_json}")
 
+    # --------------
     async def executar(self):
         # TODO: Renomear a função para algo mais descritivo
 
@@ -107,7 +111,7 @@ class CepFoliumMapFrame(tk.Frame):
         arquivo_excel = self.arquivo_excel.get()
         if not arquivo_excel:
             messagebox.showerror("Erro", "Nenhum arquivo Excel foi selecionado")
-            logging.info("Nenhum arquivo Excel foi selecionado")
+            logger.info("Nenhum arquivo Excel foi selecionado")
             return
 
         # Gerando dataframe a partir de um arquivo Excel:
@@ -122,10 +126,10 @@ class CepFoliumMapFrame(tk.Frame):
             with open(arquivo_json, "r", encoding="utf-8") as f:
                 api_results = json.load(f)
         else:
-            api_results = await self.consultar_api(dataframe)
+            api_results = await self.consultar_ceps(dataframe)
 
         # Inserindo colunas de latitude e longitude no dataframe:
-        df_coordenadas = self.incluir_coordenadas(dataframe, api_results)
+        df_coordenadas = self.atualizar_dataframe_coordenadas(dataframe, api_results)
 
         # Efetivamente gerando o mapa
         mapa = self.gerar_mapa(df_coordenadas)
@@ -134,9 +138,10 @@ class CepFoliumMapFrame(tk.Frame):
         self.salvar_mapa(mapa)
 
         # Feedback para o usuário:
-        logging.info("Mapa gerado com sucesso")
+        logger.info("Mapa gerado com sucesso")
         messagebox.showinfo("Sucesso", "Mapa gerado com sucesso")
 
+    # --------------
     def get_dataframe(self, filename):
         """
         Função que lê um arquivo Excel e retorna um DataFrame com as colunas "cep", "grupo", "latitude", "longitude", "icon", "color" e "texto".
@@ -178,7 +183,7 @@ class CepFoliumMapFrame(tk.Frame):
 
         return dataframe
 
-    async def consultar_api(self, dataframe):
+    async def consultar_ceps(self, dataframe):
         """
         Função que consome a API do BrasilAPI para obter as coordenadas dos CEPs, com várias requisições assíncronas.
 
@@ -194,11 +199,11 @@ class CepFoliumMapFrame(tk.Frame):
         # Agrupando CEPs iguais
         unique_ceps = list(dataframe["cep"].drop_duplicates().dropna())
 
-        # Consumindo API
+        # Consumindo APIs
         tasks = run_all(
             [partial(self.buscar_cep, cep) for cep in unique_ceps],
             max_at_once=MAX_AT_ONCE,
-            max_per_second=BRASILAPI_REQUEST_PER_SECOND,
+            max_per_second=REQUESTS_SECOND,
         )
         api_results = await tasks
 
@@ -213,8 +218,8 @@ class CepFoliumMapFrame(tk.Frame):
                     cep = api_result.get("cep")
                     result[cep] = api_result
                 except Exception as e:
-                    logging.error(f"Erro ao tentar salvar resultado do CEP {cep}", e)
-                    logging.exception(e)
+                    logger.error(f"Erro ao tentar salvar resultado do CEP {cep}")
+                    logger.exception(e)
 
             json.dump(result, file, ensure_ascii=False)
 
@@ -226,24 +231,44 @@ class CepFoliumMapFrame(tk.Frame):
         Função que efetivamente consome a API do BrasilAPI para obter as coordenadas de um CEP de forma assíncrona.
         """
 
+        # BrasilAPI:
         try:
-            # TODO: Timeout de ____ segundos
-            async with AsyncClient(base_url=BRASILAPI_URL, timeout=10) as client:
-                logging.debug(f"{datetime.now()} chamando {cep}")
-                response = await client.get(str(cep))
-                logging.debug(
-                    f"{datetime.now()} finalizado {cep} com status code {response.status_code}"
-                )
-
-            if response.status_code == 200:
-                return response.json()
+            async with AsyncClient(base_url=BRASILAPI_URL, timeout=60) as client:
+                logger.debug(f"Consultando CEP no BrasilAPI: {cep}")
+                brasilapi_response = await client.get(str(cep))
         except Exception as e:
-            logging.exception(e)
-            logging.error(f"Error ao tentar consumir API para o CEP {cep}", e)
+            logger.exception(e)
+            logger.error(f"Error ao tentar consumir BrasilAPI para o CEP {cep}")
+            return {}
 
+        # GeoCode (se necessário):
+        if brasilapi_response.status_code == 200:
+            brasilapi_json = brasilapi_response.json()
+
+            if "latitude" in brasilapi_json["location"]["coordinates"]:
+                logging.debug(
+                    f"CEP {cep} possui coordenadas: {brasilapi_json['location']['coordinates']}"
+                )
+                return brasilapi_json
+
+            # TODO: Refatorar para uma função própria:
+            logger.debug(f"CEP {cep} não possui coordenadas | Consultando GeoCode")
+            lat, lng = await get_coordinates_from_cep(cep)
+
+            # Atualizando JSON:
+            if lat and lng:
+                logger.debug(f"Atualizando coordenadas do CEP {cep}: ({lat}, {lng})")
+                brasilapi_json["location"]["coordinates"]["latitude"] = lat
+                brasilapi_json["location"]["coordinates"]["longitude"] = lng
+
+            # Retornando resultado:
+            return brasilapi_json
+
+        # Resultado padrão:
+        logger.warning(f"CEP {cep} não encontrado na BrasilAPI")
         return {}
 
-    def incluir_coordenadas(self, dataframe, api_results):
+    def atualizar_dataframe_coordenadas(self, dataframe, api_results):
         df_coordenadas = dataframe.copy()
 
         for index, row in df_coordenadas.iterrows():
@@ -264,10 +289,10 @@ class CepFoliumMapFrame(tk.Frame):
                     "longitude", np.nan
                 )
             except (ValueError, IndexError) as e:
-                logging.warning(f"Coordenadas não encontradas para o CEP {cep}", e)
+                logger.warning(f"Coordenadas não encontradas para o CEP {cep}", e)
             except Exception as e:
-                logging.exception(e)
-                logging.error(f"Erro ao tentar atualizar coordenadas do CEP {cep}", e)
+                logger.exception(e)
+                logger.error(f"Erro ao tentar atualizar coordenadas do CEP {cep}")
 
         return df_coordenadas
 
@@ -314,15 +339,15 @@ class CepFoliumMapFrame(tk.Frame):
                         ).add_to(mark_cluster)
                     else:
                         cnt_not_marked += 1
-                        logging.warning(
+                        logger.warning(
                             f"CEP {cep} não possui localização: ({lat}, {lng})"
                         )
                 except Exception as e:
-                    logging.exception(e)
-                    logging.error(f"Erro ao tentar adicionar marcador ao mapa: {cep}")
+                    logger.exception(e)
+                    logger.error(f"Erro ao tentar adicionar marcador ao mapa: {cep}")
 
         # Quantidade de CEPs que não foram adicionados ao mapa:
-        logging.info(
+        logger.info(
             f"Um total de {cnt_not_marked} marcadores não foram adicionados ao mapa"
         )
 
@@ -338,6 +363,7 @@ class CepFoliumMapFrame(tk.Frame):
         mapa.save(filename)
 
 
+# TODO: Depreciar
 class GeocodeFrame(tk.Frame):
     # TODO: Deixar somente a interface gráfica aqui
     def __init__(self, master, **kwargs):
@@ -368,7 +394,7 @@ class GeocodeFrame(tk.Frame):
             lf_geocode,
             text="Usar GeoCode",
             variable=self.check_var,
-            command=self.usar_geocode_api_key,
+            command=self.on_check_api,
         ).grid(row=0, column=0, padx=5, pady=5)
 
         self.api_key = tk.StringVar()
@@ -405,11 +431,11 @@ class GeocodeFrame(tk.Frame):
         )
         if arquivo_excel:
             self.arquivo_excel.set(arquivo_excel)
-            logging.info(f"Arquivo Excel selecionado: {arquivo_excel}")
+            logger.info(f"Arquivo Excel selecionado: {arquivo_excel}")
 
         # TODO: Liberar botão de execução se arquivo arquivo_excel.get() não é None|Vazio
 
-    def usar_geocode_api_key(self):
+    def on_check_api(self):
         if self.check_var.get():
             self.entry.configure(state="normal")
             self.spinbox.configure(state="normal")
@@ -425,13 +451,13 @@ class GeocodeFrame(tk.Frame):
         arquivo_excel = self.arquivo_excel.get()
         if not arquivo_excel:
             messagebox.showerror("Erro", "Nenhum arquivo Excel foi selecionado")
-            logging.info("Nenhum arquivo Excel foi selecionado")
+            logger.info("Nenhum arquivo Excel foi selecionado")
             return
 
         # Verificando se o usuário deseja usar a API Key do GeoCode:
         if self.check_var.get() and not self.api_key.get():
             messagebox.showerror("Erro", "Nenhuma API Key foi informada")
-            logging.info("Nenhuma API Key foi informada")
+            logger.info("Nenhuma API Key foi informada")
             return
 
         # Populando lista de CEPs:
@@ -439,8 +465,8 @@ class GeocodeFrame(tk.Frame):
             dataframe = self.get_dataframe(arquivo_excel)
             ceps = dataframe["cep"].tolist()
         except Exception as e:
-            logging.exception(e)
-            logging.error("Erro ao tentar ler o arquivo Excel")
+            logger.exception(e)
+            logger.error("Erro ao tentar ler o arquivo Excel")
             return
 
         # Procurando pelos CEPs:
@@ -453,8 +479,8 @@ class GeocodeFrame(tk.Frame):
             )
             results = await tasks
         except Exception as e:
-            logging.exception(e)
-            logging.error("Erro ao tentar buscar os CEPs")
+            logger.exception(e)
+            logger.error("Erro ao tentar buscar os CEPs")
             return
 
         # Guardando resultado:
@@ -462,12 +488,12 @@ class GeocodeFrame(tk.Frame):
             results = {cep: r for cep, r in zip(ceps, results)}
             self.salvar_results(results)
         except Exception as e:
-            logging.exception(e)
-            logging.error("Erro ao tentar salvar o resultado")
+            logger.exception(e)
+            logger.error("Erro ao tentar salvar o resultado")
             return
 
         # Feedback para o usuário:
-        logging.info("Consulta realizada com sucesso")
+        logger.info("Consulta realizada com sucesso")
         messagebox.showinfo("Sucesso", "Consulta realizado com sucesso")
 
     def get_dataframe(self, filename):
@@ -501,6 +527,7 @@ class GeocodeFrame(tk.Frame):
             json.dump(geocode_results, f, ensure_ascii=False)
 
 
+# TODO: Depreciar
 class MergeFrame(tk.Frame):
     # TODO: Deixar somente a interface gráfica aqui
     def __init__(self, master, **kwargs):
@@ -550,7 +577,7 @@ class MergeFrame(tk.Frame):
         )
         if arquivo:
             self.json_brasilapi.set(arquivo)
-            logging.info(f"Arquivo Excel selecionado: {arquivo}")
+            logger.info(f"Arquivo Excel selecionado: {arquivo}")
 
     def buscar_geocode(self):
         arquivo = filedialog.askopenfilename(
@@ -559,18 +586,18 @@ class MergeFrame(tk.Frame):
         )
         if arquivo:
             self.json_geodecode.set(arquivo)
-            logging.info(f"Arquivo Excel selecionado: {arquivo}")
+            logger.info(f"Arquivo Excel selecionado: {arquivo}")
 
     def executar(self):
         # TODO: Renomear a função para algo mais descritivo
 
         # TODO: Refatorar as validações para uma função própria
         if not self.json_brasilapi.get():
-            logging.error("Nenhum arquivo da BrasilAPI foi selecionado")
+            logger.error("Nenhum arquivo da BrasilAPI foi selecionado")
             return
 
         if not self.json_geodecode.get():
-            logging.error("Nenhum arquivo do Geodecode foi selecionado")
+            logger.error("Nenhum arquivo do Geodecode foi selecionado")
             return
 
         # Realizando o merge:
@@ -580,7 +607,7 @@ class MergeFrame(tk.Frame):
         self.salvar_merge(result)
 
         # Feedback para o usuário:
-        logging.info("Merge realizado com sucesso")
+        logger.info("Merge realizado com sucesso")
         messagebox.showinfo("Sucesso", "Merge realizado com sucesso")
 
     def salvar_merge(self, result):
