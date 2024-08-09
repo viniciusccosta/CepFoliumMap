@@ -65,7 +65,7 @@ O Módulo Scrappy é uma ferramenta especializada que foi desenvolvida para real
 
 Siga estas etapas simples para aproveitar ao máximo o Módulo app.py:
 
-1. Antes de executar o Módulo Scrappy, certifique-se de ter criado a variável de ambiente `CEPFOLIUMMAP_SCRAPPY_URL`. Isso pode ser feito por meio de um arquivo .env ou diretamente no terminal, configurando a URL do site que permite a consulta de CEPs e exibe o mapa do Google Maps incorporado no iframe.
+1. Antes de executar o Módulo Scrappy, certifique-se de ter criado a variável de ambiente `SCRAPPY_URL`. Isso pode ser feito por meio de um arquivo .env ou diretamente no terminal, configurando a URL do site que permite a consulta de CEPs e exibe o mapa do Google Maps incorporado no iframe.
 2. Execute o módulo 'scrappy.py' usando o seguinte comando:
 
     ```bash
