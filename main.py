@@ -8,7 +8,7 @@ from cepfoliummap.frames import CepFoliumMapFrame, GeocodeFrame, MergeFrame
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.geometry("600x250")
+        self.geometry("600x230")
         self.title("Cep Folium Map")
 
         # Notebook:

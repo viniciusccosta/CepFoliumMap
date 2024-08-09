@@ -522,7 +522,7 @@ class MergeFrame(tk.Frame):
         lf_brasilapi.columnconfigure(0, weight=1)
 
         # Arquivo Geodecode:
-        lf_geodecode = ttk.Labelframe(self, text="Brasil API")
+        lf_geodecode = ttk.Labelframe(self, text="GeoDecode")
         lf_geodecode.pack(pady=5, padx=5, fill="x", expand=False)
 
         self.json_geodecode = tk.StringVar()
