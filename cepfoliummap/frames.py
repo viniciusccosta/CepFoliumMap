@@ -14,6 +14,7 @@ from aiometer import run_all
 from folium import Icon, Marker
 from folium.plugins import MarkerCluster
 from httpx import AsyncClient
+from ttkbootstrap.tooltip import ToolTip
 
 from cepfoliummap.consts import BRASILAPI_URL, COORDENADAS_BRASIL
 from cepfoliummap.merge import merge_results
@@ -26,7 +27,10 @@ class CepFoliumMapFrame(tk.Frame):
         self.master = master
 
         # Arquivo Excel:
-        lf_excel = ttk.Labelframe(self, text="Arquivo Excel")
+        lf_excel = ttk.Labelframe(
+            self,
+            text="Arquivo Excel (cep, grupo, latitude, longitude, icon, color, texto)",
+        )
         lf_excel.pack(pady=5, padx=5, fill="x", expand=False)
 
         self.arquivo_excel = tk.StringVar()
@@ -40,8 +44,16 @@ class CepFoliumMapFrame(tk.Frame):
         lf_excel.columnconfigure(0, weight=1)
 
         # Arquivo JSON (permite que o usuário forneça um arquivo JSON (de consultas anteriores) para não ter que consumir a API novamente):
-        lf_json = ttk.Labelframe(self, text="Arquivo JSON")
+        lf_json = ttk.Labelframe(
+            self,
+            text="Arquivo JSON [opcional]",
+        )
         lf_json.pack(pady=5, padx=5, fill="x", expand=False)
+
+        ToolTip(
+            lf_json,
+            text="Caso você tenha consultado a API anteriormente e deseja reutilizar os resultados, selecione o arquivo JSON aqui.",
+        )
 
         self.arquivo_json = tk.StringVar()
         ttk.Entry(lf_json, textvariable=self.arquivo_json).grid(
