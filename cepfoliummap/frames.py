@@ -4,11 +4,12 @@ import logging
 import tkinter as tk
 from datetime import datetime
 from functools import partial
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 
 import folium
 import numpy as np
 import pandas as pd
+import ttkbootstrap as ttk
 from aiometer import run_all
 from folium import Icon, Marker
 from folium.plugins import MarkerCluster
