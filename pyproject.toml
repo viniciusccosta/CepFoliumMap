@@ -15,6 +15,7 @@ httpx = "^0.25.0"
 aiometer = "^0.4.0"
 beautifulsoup4 = "^4.12.2"
 python-decouple = "^3.8"
+rich = "^13.7.1"
 
 
 [build-system]
