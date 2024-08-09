@@ -16,7 +16,7 @@ from folium.plugins import MarkerCluster
 from httpx import AsyncClient
 from ttkbootstrap.tooltip import ToolTip
 
-from cepfoliummap.consts import (
+from cepfoliummap.constants import (
     BRASILAPI_REQUEST_PER_SECOND,
     BRASILAPI_URL,
     COORDENADAS_BRASIL,

@@ -2,7 +2,7 @@ import logging
 
 from httpx import AsyncClient
 
-from cepfoliummap.consts import GEOCODE_URL
+from cepfoliummap.constants import GEOCODE_URL
 
 
 async def scrappy_site(cep, api_key=None):
