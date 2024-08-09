@@ -7,7 +7,7 @@ from tkinter import ttk
 from decouple import config
 from rich.logging import RichHandler
 
-from cepfoliummap.frames import CepFoliumMapFrame, MergeFrame, ScrappyFrame
+from cepfoliummap.frames import CepFoliumMapFrame, GeocodeFrame, MergeFrame
 
 
 class App(tk.Tk):
@@ -22,7 +22,7 @@ class App(tk.Tk):
         # Frames
         self.frames = {
             "Folium Map": CepFoliumMapFrame(self.notebook),
-            "Scrappy": ScrappyFrame(self.notebook),
+            "GeoCode": GeocodeFrame(self.notebook),
             "Merge": MergeFrame(self.notebook),
         }
 

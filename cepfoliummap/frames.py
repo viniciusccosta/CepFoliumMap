@@ -16,7 +16,12 @@ from folium.plugins import MarkerCluster
 from httpx import AsyncClient
 from ttkbootstrap.tooltip import ToolTip
 
-from cepfoliummap.consts import BRASILAPI_URL, COORDENADAS_BRASIL
+from cepfoliummap.consts import (
+    BRASILAPI_REQUEST_PER_SECOND,
+    BRASILAPI_URL,
+    COORDENADAS_BRASIL,
+    MAX_AT_ONCE,
+)
 from cepfoliummap.merge import merge_results
 from cepfoliummap.scrappy import scrappy_site
 
@@ -191,8 +196,8 @@ class CepFoliumMapFrame(tk.Frame):
         # Consumindo API
         tasks = run_all(
             [partial(self.buscar_cep, cep) for cep in unique_ceps],
-            max_at_once=5,
-            max_per_second=2,  #  Por questões de BOM SENSO: Não ultrapasse 2 requisições por segundo!
+            max_at_once=MAX_AT_ONCE,
+            max_per_second=BRASILAPI_REQUEST_PER_SECOND,
         )
         api_results = await tasks
 
@@ -332,7 +337,7 @@ class CepFoliumMapFrame(tk.Frame):
         mapa.save(filename)
 
 
-class ScrappyFrame(tk.Frame):
+class GeocodeFrame(tk.Frame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.master = master
@@ -351,16 +356,37 @@ class ScrappyFrame(tk.Frame):
 
         lf_excel.columnconfigure(0, weight=1)
 
-        # URL
-        lf_url = ttk.Labelframe(self, text="URL")
-        lf_url.pack(pady=5, padx=5, fill="x", expand=False)
+        # GeoCode (opcional)
+        lf_geocode = ttk.Labelframe(self, text="API Key [opcional]")
+        lf_geocode.pack(pady=5, padx=5, fill="x", expand=False)
+        lf_geocode.columnconfigure(1, weight=1)
 
-        self.url = tk.StringVar()
-        ttk.Entry(lf_url, textvariable=self.url).grid(
-            row=0, column=0, sticky="ew", padx=5, pady=5
+        self.check_var = tk.IntVar(value=0)
+        ttk.Checkbutton(
+            lf_geocode,
+            text="Usar GeoCode",
+            variable=self.check_var,
+            command=self.usar_geocode_api_key,
+        ).grid(row=0, column=0, padx=5, pady=5)
+
+        self.api_key = tk.StringVar()
+        self.entry = ttk.Entry(
+            lf_geocode,
+            textvariable=self.api_key,
+            show="*",
+            state="disabled",
         )
+        self.entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
-        lf_url.columnconfigure(0, weight=1)
+        self.max_request = tk.IntVar(value=1)
+        self.spinbox = ttk.Spinbox(
+            lf_geocode,
+            from_=1,
+            to=10,
+            textvariable=self.max_request,
+            state="disabled",
+        )
+        self.spinbox.grid(row=0, column=2, padx=5, pady=5)
 
         # Botão de execução:
         # TODO: Thread para não travar a interface
@@ -381,23 +407,29 @@ class ScrappyFrame(tk.Frame):
 
         # TODO: Liberar botão de execução se arquivo arquivo_excel.get() não é None|Vazio
 
+    def usar_geocode_api_key(self):
+        if self.check_var.get():
+            self.entry.configure(state="normal")
+            self.spinbox.configure(state="normal")
+        else:
+            self.entry.configure(state="disabled")
+            self.spinbox.configure(state="disabled")
+
     async def executar(self):
         # TODO: Renomear a função para algo mais descritivo
 
-        # Verificando se o arquivo Excel foi selecionado:
         # TODO: Refatorar essas validações para uma função própria:
+        # Verificando se o arquivo Excel foi selecionado:
         arquivo_excel = self.arquivo_excel.get()
         if not arquivo_excel:
             messagebox.showerror("Erro", "Nenhum arquivo Excel foi selecionado")
             logging.info("Nenhum arquivo Excel foi selecionado")
             return
 
-        # Verificando se a URL foi preenchida:
-        # TODO: Refatorar essas validações para uma função própria:
-        url = self.url.get()
-        if not url:
-            messagebox.showerror("Erro", "Nenhuma URL foi informada")
-            logging.info("Nenhuma URL foi informada")
+        # Verificando se o usuário deseja usar a API Key do GeoCode:
+        if self.check_var.get() and not self.api_key.get():
+            messagebox.showerror("Erro", "Nenhuma API Key foi informada")
+            logging.info("Nenhuma API Key foi informada")
             return
 
         # Populando lista de CEPs:
@@ -413,9 +445,9 @@ class ScrappyFrame(tk.Frame):
         try:
             # TODO: Refatorar para uma função própria
             tasks = run_all(
-                [partial(scrappy_site, cep, url) for cep in ceps],
-                max_at_once=5,
-                max_per_second=2,
+                [partial(scrappy_site, cep, self.api_key.get()) for cep in ceps],
+                max_at_once=self.max_request.get(),
+                max_per_second=self.max_request.get(),
             )
             results = await tasks
         except Exception as e:
