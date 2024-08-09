@@ -243,7 +243,7 @@ class CepFoliumMapFrame(tk.Frame):
 
         return {}
 
-    def incluir_coordenadas(self, dataframe: pd.DataFrame, api_results: dict):
+    def incluir_coordenadas(self, dataframe, api_results):
         df_coordenadas = dataframe.copy()
 
         for index, row in df_coordenadas.iterrows():
@@ -271,7 +271,7 @@ class CepFoliumMapFrame(tk.Frame):
 
         return df_coordenadas
 
-    def gerar_mapa(self, dataframe: pd.DataFrame):
+    def gerar_mapa(self, dataframe):
         mapa = folium.Map(
             location=COORDENADAS_BRASIL,
             zoom_start=4,
