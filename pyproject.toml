@@ -19,6 +19,9 @@ rich = "^13.7.1"
 ttkbootstrap = "^1.10.1"
 
 
+[tool.poetry.group.dev.dependencies]
+pyinstaller = "^6.9.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
