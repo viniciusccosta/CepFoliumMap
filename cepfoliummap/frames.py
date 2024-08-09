@@ -51,27 +51,27 @@ class CepFoliumMapFrame(tk.Frame):
 
         lf_excel.columnconfigure(0, weight=1)
 
-        # Arquivo JSON (permite que o usuário forneça um arquivo JSON (de consultas anteriores) para não ter que consumir a API novamente):
-        lf_json = ttk.Labelframe(
+        # BrasilAPI (opcional):
+        lf_brasilapi = ttk.Labelframe(
             self,
-            text="Arquivo JSON [opcional]",
+            text="BrasilAPI JSON [opcional]",
         )
-        lf_json.pack(pady=5, padx=5, fill="x", expand=False)
+        lf_brasilapi.pack(pady=5, padx=5, fill="x", expand=False)
 
         ToolTip(
-            lf_json,
-            text="Caso você tenha consultado a API anteriormente e deseja reutilizar os resultados, selecione o arquivo JSON aqui.",
+            lf_brasilapi,
+            text="Arquivo JSON, no padrão da BrasilAPI, que contém os resultados anteriores, diminuindo a quantidade de consultas necessárias",
         )
 
         self.arquivo_json = tk.StringVar()
-        ttk.Entry(lf_json, textvariable=self.arquivo_json).grid(
+        ttk.Entry(lf_brasilapi, textvariable=self.arquivo_json).grid(
             row=0, column=0, sticky="ew", padx=5, pady=5
         )
-        ttk.Button(lf_json, text="Buscar", command=self.buscar_json).grid(
+        ttk.Button(lf_brasilapi, text="Buscar", command=self.buscar_json).grid(
             row=0, column=1, padx=5, pady=5
         )
 
-        lf_json.columnconfigure(0, weight=1)
+        lf_brasilapi.columnconfigure(0, weight=1)
 
         # Botão de execução:
         # TODO: Thread para não travar a interface
@@ -116,20 +116,44 @@ class CepFoliumMapFrame(tk.Frame):
 
         # Gerando dataframe a partir de um arquivo Excel:
         dataframe = self.get_dataframe(arquivo_excel)
+        consultar_df = dataframe.copy()
 
         # Realizando a consulta na API (se necessário):
         arquivo_json = self.arquivo_json.get()
 
-        # TODO: Validar arquivo json
-        # TODO: Permitir que o usuário consulte a API para os CEPs que não estão presentes no JSON
         if arquivo_json:
             with open(arquivo_json, "r", encoding="utf-8") as f:
+                # CEPs já consultados (talvez com coordenadas):
                 api_results = json.load(f)
-        else:
-            api_results = await self.consultar_ceps(dataframe)
 
-        # Inserindo colunas de latitude e longitude no dataframe:
-        df_coordenadas = self.atualizar_dataframe_coordenadas(dataframe, api_results)
+                # Encontrando CEPs consultados que não possuem coordenadas:
+                ceps_json = set(api_results.keys())
+                ceps_sem_coordenadas = set(
+                    {
+                        k: v
+                        for k, v in api_results.items()
+                        if not v.get("location", {}).get("coordinates")
+                    }.keys()
+                )
+
+                # Atualizando dataframe:
+                mask = consultar_df["cep"].apply(
+                    lambda x: not (x in ceps_json and x not in ceps_sem_coordenadas)
+                )
+                consultar_df = consultar_df[mask]
+
+        # Consultando CEPs (apenas os que não possuem coordenadas):
+        new_results = await self.consultar_ceps(consultar_df)
+
+        # Junção dos resultados:
+        if arquivo_json:
+            api_results.update(new_results)
+
+        # Salvando resultados em um arquivo JSON:
+        self.export_results(api_results)
+
+        # Inserindo/populando colunas de latitude e longitude no dataframe:
+        df_coordenadas = self.populate_dataframe_coordinates(dataframe, api_results)
 
         # Efetivamente gerando o mapa
         mapa = self.gerar_mapa(df_coordenadas)
@@ -193,10 +217,8 @@ class CepFoliumMapFrame(tk.Frame):
         Returns:
             json: Dicionário com os resultados da API
         """
-        # Resultado:
-        result = {}
 
-        # Agrupando CEPs iguais
+        # Agrupando CEPs iguais:
         unique_ceps = list(dataframe["cep"].drop_duplicates().dropna())
 
         # Consumindo APIs
@@ -205,26 +227,13 @@ class CepFoliumMapFrame(tk.Frame):
             max_at_once=MAX_AT_ONCE,
             max_per_second=REQUESTS_SECOND,
         )
-        api_results = await tasks
+        results = await tasks
 
-        # Salvando o resultado em arquivo .json caso o usuário queira usar posteriormente
-        with open(
-            file=f"brasilapi/{datetime.now():%Y-%m-%d-%H-%M-%S}.json",
-            mode="w",
-            encoding="utf8",
-        ) as file:
-            for api_result in api_results:
-                try:
-                    cep = api_result.get("cep")
-                    result[cep] = api_result
-                except Exception as e:
-                    logger.error(f"Erro ao tentar salvar resultado do CEP {cep}")
-                    logger.exception(e)
-
-            json.dump(result, file, ensure_ascii=False)
+        # Formatando resultados:
+        results = {r["cep"]: r for r in results if r}
 
         # Retornando resultado:
-        return result
+        return results
 
     async def buscar_cep(self, cep):
         """
@@ -268,7 +277,7 @@ class CepFoliumMapFrame(tk.Frame):
         logger.warning(f"CEP {cep} não encontrado na BrasilAPI")
         return {}
 
-    def atualizar_dataframe_coordenadas(self, dataframe, api_results):
+    def populate_dataframe_coordinates(self, dataframe, api_results):
         df_coordenadas = dataframe.copy()
 
         for index, row in df_coordenadas.iterrows():
@@ -295,6 +304,15 @@ class CepFoliumMapFrame(tk.Frame):
                 logger.error(f"Erro ao tentar atualizar coordenadas do CEP {cep}")
 
         return df_coordenadas
+
+    def export_results(self, result):
+        # TODO: Com a unificação dos Frames esse arquivo não deveria mais ser salvo em "brasilapi"
+        with open(
+            file=f"brasilapi/{datetime.now():%Y-%m-%d-%H-%M-%S}.json",
+            mode="w",
+            encoding="utf8",
+        ) as file:
+            json.dump(result, file, ensure_ascii=False)
 
     def gerar_mapa(self, dataframe):
         mapa = folium.Map(
