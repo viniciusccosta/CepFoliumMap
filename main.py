@@ -1,12 +1,7 @@
-import logging
 import tkinter as tk
-from datetime import datetime
-from pathlib import Path
 from tkinter import ttk
 
-from decouple import config
-from rich.logging import RichHandler
-
+from cepfoliummap.config import initial_config
 from cepfoliummap.frames import CepFoliumMapFrame, GeocodeFrame, MergeFrame
 
 
@@ -38,30 +33,8 @@ class App(tk.Tk):
 
 
 def main():
-    # Criando diretórios:
-    Path("mapas/").mkdir(parents=True, exist_ok=True)
-    Path("brasilapi/").mkdir(parents=True, exist_ok=True)
-    Path("logs/").mkdir(parents=True, exist_ok=True)
-    Path("scrapps/").mkdir(parents=True, exist_ok=True)
-    Path("merges/").mkdir(parents=True, exist_ok=True)
-
-    # Configurando logging:
-    file_handler = logging.FileHandler(
-        filename=f"logs/{datetime.now():%Y-%m-%d-%H-%M-%S}.log",
-        mode="w",
-        encoding="utf-8",
-    )
-    console_handler = RichHandler(rich_tracebacks=True)
-
-    logging.basicConfig(
-        level=config("LOGGING_LEVEL", logging.INFO),
-        encoding="utf-8",
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            file_handler,
-            console_handler,
-        ],
-    )
+    # Configurações iniciais:
+    initial_config()
 
     # Rodando aplicação:
     app = App()
