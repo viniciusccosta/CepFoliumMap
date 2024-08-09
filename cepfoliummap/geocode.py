@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from cepfoliummap.constants import GEOCODE_URL
 
 
-async def scrappy_site(cep, api_key=None):
+async def get_coordinates(cep, api_key=None):
     """
     Possíveis opções:
         O site "que busca cep" possui dois inputs que contém a latitude e longitude.
@@ -65,10 +65,8 @@ async def scrappy_site(cep, api_key=None):
 
     # Validando resposta:
     if "error" in response_json:
-        # {'longt': '0.00000', ..., 'error': {'description': 'Supply a valid query.', 'code': '007'}, 'latt': '0.00000'}
         logging.warning(f"Retornou um erro | CEP: {cep} | {response_json}")
     elif response_json["latt"] == "Throttled! See geocode.xyz/pricing":
-        # {'longt': 'Throttled! See geocode.xyz/pricing', ..., 'latt': 'Throttled! See geocode.xyz/pricing',}
         logging.warning(f"Excedido consultas | CEP: {cep}|")
     else:
         lat = response_json["latt"]

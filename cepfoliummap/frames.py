@@ -22,7 +22,7 @@ from cepfoliummap.constants import (
     COORDENADAS_BRASIL,
     MAX_AT_ONCE,
 )
-from cepfoliummap.geocode import scrappy_site
+from cepfoliummap.geocode import get_coordinates
 from cepfoliummap.merge import merge_results
 
 
@@ -447,7 +447,7 @@ class GeocodeFrame(tk.Frame):
         try:
             # TODO: Refatorar para uma função própria
             tasks = run_all(
-                [partial(scrappy_site, cep, self.api_key.get()) for cep in ceps],
+                [partial(get_coordinates, cep, self.api_key.get()) for cep in ceps],
                 max_at_once=self.max_request.get(),
                 max_per_second=self.max_request.get(),
             )
@@ -460,15 +460,15 @@ class GeocodeFrame(tk.Frame):
         # Guardando resultado:
         try:
             results = {cep: r for cep, r in zip(ceps, results)}
-            self.salvar_scrappy(results)
+            self.salvar_results(results)
         except Exception as e:
             logging.exception(e)
             logging.error("Erro ao tentar salvar o resultado")
             return
 
         # Feedback para o usuário:
-        logging.info("Scrappy realizado com sucesso")
-        messagebox.showinfo("Sucesso", "Scrappy realizado com sucesso")
+        logging.info("Consulta realizada com sucesso")
+        messagebox.showinfo("Sucesso", "Consulta realizado com sucesso")
 
     def get_dataframe(self, filename):
         """
@@ -490,15 +490,15 @@ class GeocodeFrame(tk.Frame):
 
         return planilha_df
 
-    def salvar_scrappy(self, scrappy_results):
+    def salvar_results(self, geocode_results):
         # TODO: Permitir que o usuário escolha o local de salvamento
 
         with open(
-            file=f"scrapps/scrappy-{datetime.now():%Y-%m-%d-%H-%M-%S}.json",
+            file=f"geodecode/geodecode-{datetime.now():%Y-%m-%d-%H-%M-%S}.json",
             mode="w",
             encoding="utf-8",
         ) as f:
-            json.dump(scrappy_results, f, ensure_ascii=False)
+            json.dump(geocode_results, f, ensure_ascii=False)
 
 
 class MergeFrame(tk.Frame):
@@ -521,19 +521,19 @@ class MergeFrame(tk.Frame):
 
         lf_brasilapi.columnconfigure(0, weight=1)
 
-        # Arquivo BrasilAPI:
-        lf_scrappy = ttk.Labelframe(self, text="Brasil API")
-        lf_scrappy.pack(pady=5, padx=5, fill="x", expand=False)
+        # Arquivo Geodecode:
+        lf_geodecode = ttk.Labelframe(self, text="Brasil API")
+        lf_geodecode.pack(pady=5, padx=5, fill="x", expand=False)
 
-        self.json_scrappy = tk.StringVar()
-        ttk.Entry(lf_scrappy, textvariable=self.json_scrappy).grid(
+        self.json_geodecode = tk.StringVar()
+        ttk.Entry(lf_geodecode, textvariable=self.json_geodecode).grid(
             row=0, column=0, sticky="ew", padx=5, pady=5
         )
-        ttk.Button(lf_scrappy, text="Buscar", command=self.buscar_scrappy).grid(
+        ttk.Button(lf_geodecode, text="Buscar", command=self.buscar_geocode).grid(
             row=0, column=1, padx=5, pady=5
         )
 
-        lf_scrappy.columnconfigure(0, weight=1)
+        lf_geodecode.columnconfigure(0, weight=1)
 
         # Botão de execução:
         # TODO: Thread para não travar a interface
@@ -552,13 +552,13 @@ class MergeFrame(tk.Frame):
             self.json_brasilapi.set(arquivo)
             logging.info(f"Arquivo Excel selecionado: {arquivo}")
 
-    def buscar_scrappy(self):
+    def buscar_geocode(self):
         arquivo = filedialog.askopenfilename(
             title="Arquivo JSON",
             filetypes=[(".json", "*.json")],
         )
         if arquivo:
-            self.json_scrappy.set(arquivo)
+            self.json_geodecode.set(arquivo)
             logging.info(f"Arquivo Excel selecionado: {arquivo}")
 
     def executar(self):
@@ -569,12 +569,12 @@ class MergeFrame(tk.Frame):
             logging.error("Nenhum arquivo da BrasilAPI foi selecionado")
             return
 
-        if not self.json_scrappy.get():
-            logging.error("Nenhum arquivo do Scrappy foi selecionado")
+        if not self.json_geodecode.get():
+            logging.error("Nenhum arquivo do Geodecode foi selecionado")
             return
 
         # Realizando o merge:
-        result = merge_results(self.json_brasilapi.get(), self.json_scrappy.get())
+        result = merge_results(self.json_brasilapi.get(), self.json_geodecode.get())
 
         # Salvando o resultado:
         self.salvar_merge(result)

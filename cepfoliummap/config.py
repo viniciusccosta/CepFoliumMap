@@ -13,7 +13,7 @@ def config_logging():
         mode="w",
         encoding="utf-8",
     )
-    console_handler = RichHandler(rich_tracebacks=True)
+    stream_handler = RichHandler(rich_tracebacks=True)
 
     logging.basicConfig(
         level=config("LOGGING_LEVEL", logging.INFO),
@@ -21,7 +21,7 @@ def config_logging():
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             file_handler,
-            console_handler,
+            stream_handler,
         ],
     )
 
@@ -30,7 +30,7 @@ def create_directories():
     Path("mapas/").mkdir(parents=True, exist_ok=True)
     Path("brasilapi/").mkdir(parents=True, exist_ok=True)
     Path("logs/").mkdir(parents=True, exist_ok=True)
-    Path("scrapps/").mkdir(parents=True, exist_ok=True)
+    Path("geodecode/").mkdir(parents=True, exist_ok=True)
     Path("merges/").mkdir(parents=True, exist_ok=True)
 
 

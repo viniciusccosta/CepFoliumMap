@@ -36,7 +36,7 @@ class Localizacao:
         }
 
 
-def merge_results(app_file, scrappy_file):
+def merge_results(app_file, geodecode_file):
     def gerar_localizacoes(results):
         localizacoes = [Localizacao(r) for cep, r in results.items() if cep]
         return localizacoes
@@ -47,7 +47,7 @@ def merge_results(app_file, scrappy_file):
 
     # Carregando resultados:
     app_results = json.load(open(app_file, "r", encoding="utf8"))
-    scrappy_results = json.load(open(scrappy_file, "r", encoding="utf8"))
+    geodecode_results = json.load(open(geodecode_file, "r", encoding="utf8"))
 
     # Gerando objetos "Localização"
     localizacoes = gerar_localizacoes(app_results)
@@ -55,13 +55,13 @@ def merge_results(app_file, scrappy_file):
     # Atualizando coordenadas das localizações que não possuem latitude e longitude:
     for l in localizacoes:
         if not (l.latitude and l.longitude):
-            # Existe esse CEP no resultado do scrappy e possui valores:
-            if scrappy_results.get(l.cep):
-                # Caso "scrappy_result[cep]" não possua latitude, simplesmente não fará diferença
-                l.latitude = scrappy_results[l.cep].get("latitude")
+            # Existe esse CEP no resultado do geodecode e possui valores:
+            if geodecode_results.get(l.cep):
+                # Caso "geodecode_results[cep]" não possua latitude, simplesmente não fará diferença
+                l.latitude = geodecode_results[l.cep].get("latitude")
 
-                # Caso "scrappy_result[cep]" não possua longitude, simplesmente não fará diferença
-                l.longitude = scrappy_results[l.cep].get("longitude")
+                # Caso "geodecode_results[cep]" não possua longitude, simplesmente não fará diferença
+                l.longitude = geodecode_results[l.cep].get("longitude")
 
     # Salva resultado:
     result = {l.cep: l.to_json() for l in localizacoes}

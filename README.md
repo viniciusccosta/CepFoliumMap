@@ -14,19 +14,19 @@ Nesta aba, você pode gerar mapas interativos no formato `.html` a partir de um 
 - Arquivo `.xls`: O arquivo deve conter as colunas: [cep, grupo, latitude, longitude, icon, color, texto], sendo apenas a coluna `cep` obrigatória.
 - Arquivo JSON (Opcional): Você pode fornecer um arquivo JSON com as informações de coordenadas para os CEPs. Caso não forneça este arquivo, o programa irá gerar um novo, consultando a BrasilAPI para obter as coordenadas. Este processo pode demorar alguns minutos, dependendo da quantidade de CEPs.
 
-### Segunda Aba: "Scrappy"
+### Segunda Aba: "Geodecode"
 
 Nesta aba, você pode tentar recuperar a latitude e longitude de CEPs que não foram encontrados pela BrasilAPI.
 
 - Arquivo `.xls`: Forneça um arquivo com a coluna `cep`.
-- URL para Scrappy: Informe a URL do site de **Busca CEP** que contenha um mapa e dois campos input hidden com IDs "lat" e "lng". O programa utilizará essa URL para tentar obter as coordenadas.
+- Chave de API: Caso possua uma chave do Geodecode para realizar mais de 1 requisição por segundo.
 
 ### Terceira Aba: "Data Merger"
 
 Use esta aba quando precisar combinar os resultados obtidos nas abas anteriores.
 
 - Arquivo JSON (BrasilAPI): Forneça o arquivo JSON gerado a partir da primeira aba.
-- Arquivo JSON (Scrappy): Forneça o arquivo JSON gerado a partir da segunda aba.
+- Arquivo JSON (Geodecode): Forneça o arquivo JSON gerado a partir da segunda aba.
 
 O programa combinará as informações, gerando um novo arquivo JSON consolidado que pode ser usado na primeira aba para evitar consultas desnecessárias à BrasilAPI.
 
