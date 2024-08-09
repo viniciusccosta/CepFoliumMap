@@ -22,11 +22,12 @@ from cepfoliummap.constants import (
     COORDENADAS_BRASIL,
     MAX_AT_ONCE,
 )
+from cepfoliummap.geocode import scrappy_site
 from cepfoliummap.merge import merge_results
-from cepfoliummap.scrappy import scrappy_site
 
 
 class CepFoliumMapFrame(tk.Frame):
+    # TODO: Criar módulo próprio para as funções de CepFoliumMap e deixar somente a interface gráfica aqui
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.master = master
@@ -338,6 +339,7 @@ class CepFoliumMapFrame(tk.Frame):
 
 
 class GeocodeFrame(tk.Frame):
+    # TODO: Deixar somente a interface gráfica aqui
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.master = master
@@ -500,6 +502,7 @@ class GeocodeFrame(tk.Frame):
 
 
 class MergeFrame(tk.Frame):
+    # TODO: Deixar somente a interface gráfica aqui
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.master = master
