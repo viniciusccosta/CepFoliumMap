@@ -41,6 +41,8 @@ class CepFoliumMapFrame(tk.Frame):
         )
         lf_excel.pack(pady=5, padx=5, fill="x", expand=False)
 
+        lf_excel.columnconfigure(0, weight=1)
+
         self.arquivo_excel = tk.StringVar()
         ttk.Entry(lf_excel, textvariable=self.arquivo_excel).grid(
             row=0, column=0, sticky="ew", padx=5, pady=5
@@ -49,14 +51,14 @@ class CepFoliumMapFrame(tk.Frame):
             row=0, column=1, padx=5, pady=5
         )
 
-        lf_excel.columnconfigure(0, weight=1)
-
         # BrasilAPI (opcional):
         lf_brasilapi = ttk.Labelframe(
             self,
             text="BrasilAPI JSON [opcional]",
         )
         lf_brasilapi.pack(pady=5, padx=5, fill="x", expand=False)
+
+        lf_brasilapi.columnconfigure(0, weight=1)
 
         ToolTip(
             lf_brasilapi,
@@ -71,7 +73,38 @@ class CepFoliumMapFrame(tk.Frame):
             row=0, column=1, padx=5, pady=5
         )
 
-        lf_brasilapi.columnconfigure(0, weight=1)
+        # GeoCode (opcional)
+        lf_geocode = ttk.Labelframe(self, text="Geocode API Key [opcional]")
+        lf_geocode.pack(pady=5, padx=5, fill="x", expand=False)
+
+        lf_geocode.columnconfigure(1, weight=1)
+
+        self.check_var = tk.IntVar(value=0)
+        ttk.Checkbutton(
+            lf_geocode,
+            text="Usar GeoCode",
+            variable=self.check_var,
+            command=self.on_check_api,
+        ).grid(row=0, column=0, padx=5, pady=5)
+
+        self.api_key = tk.StringVar()
+        self.entry = ttk.Entry(
+            lf_geocode,
+            textvariable=self.api_key,
+            show="*",
+            state="disabled",
+        )
+        self.entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+
+        self.max_request = tk.IntVar(value=1)
+        self.spinbox = ttk.Spinbox(
+            lf_geocode,
+            from_=1,
+            to=10,
+            textvariable=self.max_request,
+            state="disabled",
+        )
+        self.spinbox.grid(row=0, column=2, padx=5, pady=5)
 
         # Botão de execução:
         # TODO: Thread para não travar a interface
@@ -102,6 +135,14 @@ class CepFoliumMapFrame(tk.Frame):
             self.arquivo_json.set(arquivo_json)
             logger.info(f"Arquivo JSON selecionado: {arquivo_json}")
 
+    def on_check_api(self):
+        if self.check_var.get():
+            self.entry.configure(state="normal")
+            self.spinbox.configure(state="normal")
+        else:
+            self.entry.configure(state="disabled")
+            self.spinbox.configure(state="disabled")
+
     # --------------
     async def executar(self):
         # TODO: Renomear a função para algo mais descritivo
@@ -112,6 +153,12 @@ class CepFoliumMapFrame(tk.Frame):
         if not arquivo_excel:
             messagebox.showerror("Erro", "Nenhum arquivo Excel foi selecionado")
             logger.info("Nenhum arquivo Excel foi selecionado")
+            return
+
+        # Verificando se o usuário deseja usar a API Key do GeoCode:
+        if self.check_var.get() and not self.api_key.get():
+            messagebox.showerror("Erro", "Nenhuma API Key foi informada")
+            logger.info("Nenhuma API Key foi informada")
             return
 
         # Gerando dataframe a partir de um arquivo Excel:
@@ -262,7 +309,7 @@ class CepFoliumMapFrame(tk.Frame):
 
             # TODO: Refatorar para uma função própria:
             logger.debug(f"CEP {cep} não possui coordenadas | Consultando GeoCode")
-            lat, lng = await get_coordinates_from_cep(cep)
+            lat, lng = await get_coordinates_from_cep(cep, self.api_key.get())
 
             # Atualizando JSON:
             if lat and lng:
@@ -379,261 +426,3 @@ class CepFoliumMapFrame(tk.Frame):
 
         filename = f"mapas/{datetime.now():%Y-%m-%d-%H-%M-%S}.html"
         mapa.save(filename)
-
-
-# TODO: Depreciar
-class GeocodeFrame(tk.Frame):
-    # TODO: Deixar somente a interface gráfica aqui
-    def __init__(self, master, **kwargs):
-        super().__init__(master, **kwargs)
-        self.master = master
-
-        # Arquivo Excel:
-        lf_excel = ttk.Labelframe(self, text="Arquivo Excel")
-        lf_excel.pack(pady=5, padx=5, fill="x", expand=False)
-
-        self.arquivo_excel = tk.StringVar()
-        ttk.Entry(lf_excel, textvariable=self.arquivo_excel).grid(
-            row=0, column=0, sticky="ew", padx=5, pady=5
-        )
-        ttk.Button(lf_excel, text="Buscar", command=self.buscar_xls).grid(
-            row=0, column=1, padx=5, pady=5
-        )
-
-        lf_excel.columnconfigure(0, weight=1)
-
-        # GeoCode (opcional)
-        lf_geocode = ttk.Labelframe(self, text="API Key [opcional]")
-        lf_geocode.pack(pady=5, padx=5, fill="x", expand=False)
-        lf_geocode.columnconfigure(1, weight=1)
-
-        self.check_var = tk.IntVar(value=0)
-        ttk.Checkbutton(
-            lf_geocode,
-            text="Usar GeoCode",
-            variable=self.check_var,
-            command=self.on_check_api,
-        ).grid(row=0, column=0, padx=5, pady=5)
-
-        self.api_key = tk.StringVar()
-        self.entry = ttk.Entry(
-            lf_geocode,
-            textvariable=self.api_key,
-            show="*",
-            state="disabled",
-        )
-        self.entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        self.max_request = tk.IntVar(value=1)
-        self.spinbox = ttk.Spinbox(
-            lf_geocode,
-            from_=1,
-            to=10,
-            textvariable=self.max_request,
-            state="disabled",
-        )
-        self.spinbox.grid(row=0, column=2, padx=5, pady=5)
-
-        # Botão de execução:
-        # TODO: Thread para não travar a interface
-        ttk.Button(
-            self,
-            text="Executar",
-            command=lambda: asyncio.run(self.executar()),
-        ).pack(pady=5, padx=5)
-
-    def buscar_xls(self):
-        arquivo_excel = filedialog.askopenfilename(
-            title="Arquivo Excel",
-            filetypes=[(".xls", "*.xls")],
-        )
-        if arquivo_excel:
-            self.arquivo_excel.set(arquivo_excel)
-            logger.info(f"Arquivo Excel selecionado: {arquivo_excel}")
-
-        # TODO: Liberar botão de execução se arquivo arquivo_excel.get() não é None|Vazio
-
-    def on_check_api(self):
-        if self.check_var.get():
-            self.entry.configure(state="normal")
-            self.spinbox.configure(state="normal")
-        else:
-            self.entry.configure(state="disabled")
-            self.spinbox.configure(state="disabled")
-
-    async def executar(self):
-        # TODO: Renomear a função para algo mais descritivo
-
-        # TODO: Refatorar essas validações para uma função própria:
-        # Verificando se o arquivo Excel foi selecionado:
-        arquivo_excel = self.arquivo_excel.get()
-        if not arquivo_excel:
-            messagebox.showerror("Erro", "Nenhum arquivo Excel foi selecionado")
-            logger.info("Nenhum arquivo Excel foi selecionado")
-            return
-
-        # Verificando se o usuário deseja usar a API Key do GeoCode:
-        if self.check_var.get() and not self.api_key.get():
-            messagebox.showerror("Erro", "Nenhuma API Key foi informada")
-            logger.info("Nenhuma API Key foi informada")
-            return
-
-        # Populando lista de CEPs:
-        try:
-            dataframe = self.get_dataframe(arquivo_excel)
-            ceps = dataframe["cep"].tolist()
-        except Exception as e:
-            logger.exception(e)
-            logger.error("Erro ao tentar ler o arquivo Excel")
-            return
-
-        # Procurando pelos CEPs:
-        try:
-            # TODO: Refatorar para uma função própria
-            tasks = run_all(
-                [partial(get_coordinates, cep, self.api_key.get()) for cep in ceps],
-                max_at_once=self.max_request.get(),
-                max_per_second=self.max_request.get(),
-            )
-            results = await tasks
-        except Exception as e:
-            logger.exception(e)
-            logger.error("Erro ao tentar buscar os CEPs")
-            return
-
-        # Guardando resultado:
-        try:
-            results = {cep: r for cep, r in zip(ceps, results)}
-            self.salvar_results(results)
-        except Exception as e:
-            logger.exception(e)
-            logger.error("Erro ao tentar salvar o resultado")
-            return
-
-        # Feedback para o usuário:
-        logger.info("Consulta realizada com sucesso")
-        messagebox.showinfo("Sucesso", "Consulta realizado com sucesso")
-
-    def get_dataframe(self, filename):
-        """
-        Função que lê um arquivo Excel e retorna um DataFrame.
-
-        Args:
-            arquivo(str): Caminho do arquivo Excel
-
-        Returns:
-            pd.DataFrame
-        """
-
-        # Lendo planilha (xls que contenha uma coluna "cep"):
-        planilha_df = pd.read_excel(filename)
-        planilha_df = planilha_df.drop_duplicates().dropna(subset=["cep"])
-        planilha_df["cep"] = planilha_df["cep"].apply(
-            lambda x: str(x).replace(".", "").replace("-", "")
-        )
-
-        return planilha_df
-
-    def salvar_results(self, geocode_results):
-        # TODO: Permitir que o usuário escolha o local de salvamento
-
-        with open(
-            file=f"geodecode/geodecode-{datetime.now():%Y-%m-%d-%H-%M-%S}.json",
-            mode="w",
-            encoding="utf-8",
-        ) as f:
-            json.dump(geocode_results, f, ensure_ascii=False)
-
-
-# TODO: Depreciar
-class MergeFrame(tk.Frame):
-    # TODO: Deixar somente a interface gráfica aqui
-    def __init__(self, master, **kwargs):
-        super().__init__(master, **kwargs)
-        self.master = master
-
-        # Arquivo BrasilAPI:
-        lf_brasilapi = ttk.Labelframe(self, text="Brasil API")
-        lf_brasilapi.pack(pady=5, padx=5, fill="x", expand=False)
-
-        self.json_brasilapi = tk.StringVar()
-        ttk.Entry(lf_brasilapi, textvariable=self.json_brasilapi).grid(
-            row=0, column=0, sticky="ew", padx=5, pady=5
-        )
-        ttk.Button(lf_brasilapi, text="Buscar", command=self.buscar_brasilapi).grid(
-            row=0, column=1, padx=5, pady=5
-        )
-
-        lf_brasilapi.columnconfigure(0, weight=1)
-
-        # Arquivo Geodecode:
-        lf_geodecode = ttk.Labelframe(self, text="GeoDecode")
-        lf_geodecode.pack(pady=5, padx=5, fill="x", expand=False)
-
-        self.json_geodecode = tk.StringVar()
-        ttk.Entry(lf_geodecode, textvariable=self.json_geodecode).grid(
-            row=0, column=0, sticky="ew", padx=5, pady=5
-        )
-        ttk.Button(lf_geodecode, text="Buscar", command=self.buscar_geocode).grid(
-            row=0, column=1, padx=5, pady=5
-        )
-
-        lf_geodecode.columnconfigure(0, weight=1)
-
-        # Botão de execução:
-        # TODO: Thread para não travar a interface
-        ttk.Button(
-            self,
-            text="Executar",
-            command=self.executar,
-        ).pack(pady=5, padx=5)
-
-    def buscar_brasilapi(self):
-        arquivo = filedialog.askopenfilename(
-            title="Arquivo JSON",
-            filetypes=[(".json", "*.json")],
-        )
-        if arquivo:
-            self.json_brasilapi.set(arquivo)
-            logger.info(f"Arquivo Excel selecionado: {arquivo}")
-
-    def buscar_geocode(self):
-        arquivo = filedialog.askopenfilename(
-            title="Arquivo JSON",
-            filetypes=[(".json", "*.json")],
-        )
-        if arquivo:
-            self.json_geodecode.set(arquivo)
-            logger.info(f"Arquivo Excel selecionado: {arquivo}")
-
-    def executar(self):
-        # TODO: Renomear a função para algo mais descritivo
-
-        # TODO: Refatorar as validações para uma função própria
-        if not self.json_brasilapi.get():
-            logger.error("Nenhum arquivo da BrasilAPI foi selecionado")
-            return
-
-        if not self.json_geodecode.get():
-            logger.error("Nenhum arquivo do Geodecode foi selecionado")
-            return
-
-        # Realizando o merge:
-        result = merge_results(self.json_brasilapi.get(), self.json_geodecode.get())
-
-        # Salvando o resultado:
-        self.salvar_merge(result)
-
-        # Feedback para o usuário:
-        logger.info("Merge realizado com sucesso")
-        messagebox.showinfo("Sucesso", "Merge realizado com sucesso")
-
-    def salvar_merge(self, result):
-        # TODO: Permitir que o usuário escolha o local de salvamento
-
-        with open(
-            file=f"merges/merged-{datetime.now():%Y-%m-%d-%H-%M-%S}.json",
-            mode="w",
-            encoding="utf-8",
-        ) as f:
-            json.dump(result, f, ensure_ascii=False)

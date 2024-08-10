@@ -36,7 +36,7 @@ async def consume_geocode_api(cep_formatado, api_key=None):
                 url="",
                 data={
                     "locate": cep_formatado,
-                    "auth": api_key,
+                    "auth": api_key,  # TODO: Apenas se diferente de None
                     "geoit": "JSON",
                     "region": "BR",
                 },
@@ -78,7 +78,7 @@ async def get_coordinates_from_cep(cep, api_key=None):
     cep_formatado = format_cep(cep)
 
     # Efetivamente consumindo a API:
-    geodecode_response = await consume_geocode_api(cep_formatado)
+    geodecode_response = await consume_geocode_api(cep_formatado, api_key)
 
     if not geodecode_response:
         return lat, lng

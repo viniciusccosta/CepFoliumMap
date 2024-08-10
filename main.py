@@ -2,13 +2,14 @@ import tkinter as tk
 from tkinter import ttk
 
 from cepfoliummap.config import initial_config
-from cepfoliummap.frames import CepFoliumMapFrame, GeocodeFrame, MergeFrame
+from cepfoliummap.frames import CepFoliumMapFrame
 
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.geometry("600x230")
+        self.minsize(600, 300)
+        self.maxsize(1200, 300)
         self.title("Cep Folium Map")
 
         # Notebook:
@@ -17,8 +18,6 @@ class App(tk.Tk):
         # Frames
         self.frames = {
             "Folium Map": CepFoliumMapFrame(self.notebook),
-            "GeoCode": GeocodeFrame(self.notebook),
-            "Merge": MergeFrame(self.notebook),
         }
 
         # Adicionando frames ao notebook:
