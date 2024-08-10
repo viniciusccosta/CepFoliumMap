@@ -22,8 +22,7 @@ from cepfoliummap.constants import (
     MAX_AT_ONCE,
     REQUESTS_SECOND,
 )
-from cepfoliummap.geocode import get_coordinates, get_coordinates_from_cep
-from cepfoliummap.merge import merge_results
+from cepfoliummap.geocode import get_coordinates_from_cep
 
 logger = logging.getLogger(__name__)
 
@@ -355,7 +354,7 @@ class CepFoliumMapFrame(tk.Frame):
     def export_results(self, result):
         # TODO: Com a unificação dos Frames esse arquivo não deveria mais ser salvo em "brasilapi"
         with open(
-            file=f"brasilapi/{datetime.now():%Y-%m-%d-%H-%M-%S}.json",
+            file=f"consultas/{datetime.now():%Y-%m-%d-%H-%M-%S}.json",
             mode="w",
             encoding="utf8",
         ) as file:

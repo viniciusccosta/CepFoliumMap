@@ -42,10 +42,8 @@ def create_directories():
     logger.debug("Criando diretórios")
 
     Path("mapas/").mkdir(parents=True, exist_ok=True)
-    Path("brasilapi/").mkdir(parents=True, exist_ok=True)
+    Path("consultas/").mkdir(parents=True, exist_ok=True)
     Path("logs/").mkdir(parents=True, exist_ok=True)
-    Path("geodecode/").mkdir(parents=True, exist_ok=True)
-    Path("merges/").mkdir(parents=True, exist_ok=True)
 
     logger.debug("Diretórios criados")
 
