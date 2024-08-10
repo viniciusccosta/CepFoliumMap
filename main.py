@@ -8,8 +8,8 @@ from cepfoliummap.frames import CepFoliumMapFrame
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.minsize(600, 300)
-        self.maxsize(1200, 300)
+        self.minsize(600, 310)
+        self.maxsize(1200, 310)
         self.title("Cep Folium Map")
 
         # Notebook:
