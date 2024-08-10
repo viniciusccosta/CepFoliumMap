@@ -78,11 +78,11 @@ class CepFoliumMapFrame(tk.Frame):
 
         lf_geocode.columnconfigure(1, weight=1)
 
-        self.check_var = tk.IntVar(value=0)
+        self.geocode_var = tk.IntVar(value=0)
         ttk.Checkbutton(
             lf_geocode,
             text="Usar GeoCode",
-            variable=self.check_var,
+            variable=self.geocode_var,
             command=self.on_check_api,
         ).grid(row=0, column=0, padx=5, pady=5)
 
@@ -104,6 +104,17 @@ class CepFoliumMapFrame(tk.Frame):
             state="disabled",
         )
         self.spinbox.grid(row=0, column=2, padx=5, pady=5)
+
+        # Configurações Gerais:
+        lf_settings = ttk.Labelframe(self, text="Configurações Gerais")
+        lf_settings.pack(pady=5, padx=5, fill="x", expand=False)
+
+        self.consumir_api = tk.IntVar(value=0)
+        ttk.Checkbutton(
+            lf_settings,
+            text="Consumir API",
+            variable=self.consumir_api,
+        ).pack(pady=5, padx=5)
 
         # Botão de execução:
         # TODO: Thread para não travar a interface
@@ -135,7 +146,7 @@ class CepFoliumMapFrame(tk.Frame):
             logger.info(f"Arquivo JSON selecionado: {arquivo_json}")
 
     def on_check_api(self):
-        if self.check_var.get():
+        if self.geocode_var.get():
             self.entry.configure(state="normal")
             self.spinbox.configure(state="normal")
         else:
@@ -155,48 +166,58 @@ class CepFoliumMapFrame(tk.Frame):
             return
 
         # Verificando se o usuário deseja usar a API Key do GeoCode:
-        if self.check_var.get() and not self.api_key.get():
+        if self.geocode_var.get() and not self.api_key.get():
             messagebox.showerror("Erro", "Nenhuma API Key foi informada")
             logger.info("Nenhuma API Key foi informada")
+            return
+
+        # Verificando se o usuário deseja consumir a API:
+        if not self.consumir_api.get() and self.arquivo_json.get() == "":
+            messagebox.showerror("Erro", "Nenhum arquivo JSON foi selecionado")
+            logger.info("Nenhum arquivo JSON foi selecionado")
             return
 
         # Gerando dataframe a partir de um arquivo Excel:
         dataframe = self.get_dataframe(arquivo_excel)
         consultar_df = dataframe.copy()
 
-        # Realizando a consulta na API (se necessário):
+        # Lendo arquivo JSON:
         arquivo_json = self.arquivo_json.get()
 
-        if arquivo_json:
+        if self.consumir_api.get():
+            if arquivo_json:
+                with open(arquivo_json, "r", encoding="utf-8") as f:
+                    # CEPs já consultados (talvez com coordenadas):
+                    api_results = json.load(f)
+
+                    # Encontrando CEPs consultados que não possuem coordenadas:
+                    ceps_json = set(api_results.keys())
+                    ceps_sem_coordenadas = set(
+                        {
+                            k: v
+                            for k, v in api_results.items()
+                            if not v.get("location", {}).get("coordinates")
+                        }.keys()
+                    )
+
+                    # Atualizando dataframe:
+                    mask = consultar_df["cep"].apply(
+                        lambda x: not (x in ceps_json and x not in ceps_sem_coordenadas)
+                    )
+                    consultar_df = consultar_df[mask]
+
+            # Consultando CEPs (apenas os que não possuem coordenadas):
+            new_results = await self.consultar_ceps(consultar_df)
+
+            # Junção dos resultados:
+            if arquivo_json:
+                api_results.update(new_results)
+
+            # Salvando resultados em um arquivo JSON:
+            self.export_results(api_results)
+        else:
             with open(arquivo_json, "r", encoding="utf-8") as f:
-                # CEPs já consultados (talvez com coordenadas):
                 api_results = json.load(f)
-
-                # Encontrando CEPs consultados que não possuem coordenadas:
-                ceps_json = set(api_results.keys())
-                ceps_sem_coordenadas = set(
-                    {
-                        k: v
-                        for k, v in api_results.items()
-                        if not v.get("location", {}).get("coordinates")
-                    }.keys()
-                )
-
-                # Atualizando dataframe:
-                mask = consultar_df["cep"].apply(
-                    lambda x: not (x in ceps_json and x not in ceps_sem_coordenadas)
-                )
-                consultar_df = consultar_df[mask]
-
-        # Consultando CEPs (apenas os que não possuem coordenadas):
-        new_results = await self.consultar_ceps(consultar_df)
-
-        # Junção dos resultados:
-        if arquivo_json:
-            api_results.update(new_results)
-
-        # Salvando resultados em um arquivo JSON:
-        self.export_results(api_results)
 
         # Inserindo/populando colunas de latitude e longitude no dataframe:
         df_coordenadas = self.populate_dataframe_coordinates(dataframe, api_results)
