@@ -11,7 +11,7 @@ O CepFoliumMap é uma ferramenta versátil que permite consultar múltiplos CEPs
 
 Nesta aba, você pode gerar mapas interativos no formato `.html` a partir de um arquivo `.xls` fornecido.
 
-- Arquivo `.xls`: O arquivo deve conter as colunas: [cep, grupo, latitude, longitude, icon, color, texto], sendo apenas a coluna `cep` obrigatória.
+- Arquivo `.xls`: O arquivo deve conter as colunas: [cep, grupo, latitude, longitude, icon, color, texto, radius], sendo apenas a coluna `cep` obrigatória.
 - Arquivo JSON (Opcional): Você pode fornecer um arquivo JSON com as informações de coordenadas para os CEPs. Caso não forneça este arquivo, o programa irá gerar um novo, consultando a BrasilAPI para obter as coordenadas. Este processo pode demorar alguns minutos, dependendo da quantidade de CEPs.
 
 ### Segunda Aba: "Geodecode"
